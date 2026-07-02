@@ -35,7 +35,7 @@ docker push $IMAGE
 ## Deploy to EKS
 
 ```bash
-$(terraform output -raw kubeconfig_command)
+aws eks update-kubeconfig --region us-east-1 --name $(cd modules/05-eks && terraform output -raw cluster_id)
 
 sed -i "s|REPLACE_WITH_ECR_URL:latest|$IMAGE|g" sample-app/k8s/deployment.yaml
 kubectl apply -f sample-app/k8s/namespace.yaml

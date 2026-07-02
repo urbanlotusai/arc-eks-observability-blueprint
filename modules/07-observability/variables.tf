@@ -1,35 +1,50 @@
 variable "namespace" {
-  type = string
+  description = "Organization or team namespace"
+  type        = string
+  default     = "arc"
 }
 
 variable "environment" {
-  type = string
+  description = "Environment name"
+  type        = string
+  default     = "dev"
 }
 
-variable "search_engine" {
-  type = string
-}
-
-variable "log_aggregator" {
-  type = string
-}
-
-variable "metrics_monitoring_system" {
-  type = string
-}
-
-variable "elasticsearch_config" {
-  type = any
-}
-
-variable "fluentbit_config" {
-  type = any
-}
-
-variable "prometheus_config" {
-  type = any
+variable "region" {
+  description = "AWS region"
+  type        = string
+  default     = "us-east-1"
 }
 
 variable "tags" {
-  type = map(string)
+  description = "Tags to apply to resources"
+  type        = map(string)
+  default = {
+    ManagedBy = "Terraform"
+    Project   = "arc-eks-observability-blueprint"
+  }
+}
+
+variable "state_bucket_name" {
+  description = "S3 bucket name for Terraform state"
+  type        = string
+  default     = ""
+}
+
+variable "search_engine" {
+  description = "Log aggregation backend: elasticsearch or opensearch."
+  type        = string
+  default     = "opensearch"
+}
+
+variable "log_aggregator" {
+  description = "Log shipper to deploy: fluent-bit or fluentd."
+  type        = string
+  default     = "fluent-bit"
+}
+
+variable "metrics_monitoring_system" {
+  description = "Metrics stack to deploy: prometheus."
+  type        = string
+  default     = "prometheus"
 }

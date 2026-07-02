@@ -1,1 +1,2 @@
-# No outputs required by root — dashboards accessed via Grafana/Kibana service post-deploy.
+# No outputs required by downstream modules — dashboards are accessed via the
+# Grafana/OpenSearch Kubernetes services post-deploy.

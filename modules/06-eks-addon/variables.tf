@@ -1,11 +1,31 @@
-variable "cluster_name" {
-  type = string
+variable "namespace" {
+  description = "Organization or team namespace"
+  type        = string
+  default     = "arc"
 }
 
-variable "addons" {
-  type = any
+variable "environment" {
+  description = "Environment name"
+  type        = string
+  default     = "dev"
+}
+
+variable "region" {
+  description = "AWS region"
+  type        = string
+  default     = "us-east-1"
 }
 
 variable "tags" {
-  type = map(string)
+  description = "Tags to apply to resources"
+  type        = map(string)
+  default = {
+    ManagedBy = "Terraform"
+    Project   = "arc-eks-observability-blueprint"
+  }
+}
+
+variable "state_bucket_name" {
+  description = "S3 bucket name for Terraform state (used to read 05-eks remote state)"
+  type        = string
 }

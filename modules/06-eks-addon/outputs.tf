@@ -1,1 +1,1 @@
-# No outputs required by root — addons are cluster-level.
+# No outputs required by downstream modules — addons are cluster-level.

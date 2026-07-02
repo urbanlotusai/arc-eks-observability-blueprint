@@ -85,35 +85,50 @@ No hand-wiring of Helm releases, IAM roles for service accounts, or log routing.
 - **AWS credentials** configured (`aws configure`)
 - **kubectl** installed ([install guide](https://kubernetes.io/docs/tasks/tools/))
 
-### 2. Configure
+### 2. Clone
 
 ```bash
-git clone https://github.com/sourcefuse/arc-eks-observability-blueprint.git
+git clone https://github.com/urbanlotusai/arc-eks-observability-blueprint.git
 cd arc-eks-observability-blueprint
-
-cp examples/general.tfvars terraform.tfvars
 ```
 
-Edit the mandatory values in `terraform.tfvars`:
+This blueprint uses **independent per-module Terraform state** — there is no root `main.tf`. Each `modules/NN-name/` is applied on its own, with cross-module values (like the KMS key ARN, VPC ID, or cluster ID) resolved via `terraform_remote_state` data sources rather than a parent module.
 
-| Variable | Example |
-|---|---|
-| `environment` | `prod` |
-| `namespace` | `myorg` |
-
-### 3. Deploy
-
-| Step | With `make` | Raw Terraform (all OS) |
-|---|---|---|
-| Validate | `make validate` | `terraform init -backend=false && terraform validate` |
-| Preview | `make plan` | `terraform plan` |
-| Deploy | `make apply` | `terraform init && terraform apply` |
-
-### 4. Access dashboards
+### 3. Bootstrap the state backend (once per environment)
 
 ```bash
-# Update local kubeconfig
-$(terraform output -raw kubeconfig_command)
+make bootstrap ENV=dev REGION=us-east-1 NAMESPACE=myorg
+```
+
+Creates the S3 state bucket + DynamoDB lock table every module's backend uses.
+
+### 4. Deploy all modules
+
+```bash
+make apply ENV=dev REGION=us-east-1 NAMESPACE=myorg
+```
+
+This runs `terraform init` + `apply` across `modules/01-kms` through `modules/07-observability` in order.
+
+### Deploy a single module with a compliance profile
+
+```bash
+./scripts/apply-module.sh 05-eks dev us-east-1 hipaa
+```
+
+Copies `modules/05-eks/tfvars/hipaa.tfvars` → `terraform.tfvars` for that module, then inits/plans/applies it alone.
+
+| Step | With `make` (all modules) | Single module |
+|---|---|---|
+| Validate | `make validate` | `cd modules/<NN-name> && terraform validate` |
+| Preview | `make plan` | `./scripts/apply-module.sh <name> <env> <region> <profile>` then inspect the plan |
+| Deploy | `make apply` | `./scripts/apply-module.sh <name> <env> <region> <profile>` |
+
+### 5. Access dashboards
+
+```bash
+# Update local kubeconfig (cluster_id comes from the 05-eks module's state)
+aws eks update-kubeconfig --region us-east-1 --name $(cd modules/05-eks && terraform output -raw cluster_id)
 
 # Verify observability pods are running
 kubectl get pods --all-namespaces | grep -E 'observability|prometheus|grafana|fluent'
@@ -129,21 +144,24 @@ kubectl port-forward svc/grafana 3000:3000 -n observability
 
 | Profile | Effect |
 |---|---|
-| `general` | KMS rotation on, 90-day S3 log retention |
-| `hipaa` | 365-day S3 log retention, EKS secrets encrypted with CMK (enforced) |
-| `pci_dss` | 365-day S3 log retention, EKS secrets encrypted with CMK (enforced) |
+| `general` | KMS rotation on, EKS secrets encrypted with the CMK from 01-kms |
+| `hipaa` | Same as `general` — see `modules/*/tfvars/hipaa.tfvars` header comments for why there's no additional divergence today |
+| `pci` | Same as `general` — see `modules/*/tfvars/pci.tfvars` header comments for why there's no additional divergence today |
+
+Apply a profile to any module with `./scripts/apply-module.sh <module> <env> <region> <profile>`.
 
 ---
 
 ## Key outputs
 
+Each module's outputs live in its own state — run `terraform output` from inside that module's directory:
+
 ```bash
-terraform output cluster_id             # EKS cluster name
-terraform output cluster_endpoint       # EKS API server endpoint
-terraform output kubeconfig_command     # aws eks update-kubeconfig ...
-terraform output s3_log_archive_bucket  # S3 bucket for long-term logs
-terraform output kms_key_arn            # CMK
-terraform output vpc_id                 # VPC ID
+(cd modules/05-eks && terraform output cluster_id)             # EKS cluster name
+(cd modules/05-eks && terraform output cluster_endpoint)       # EKS API server endpoint
+(cd modules/02-s3 && terraform output bucket_id)                # S3 bucket for long-term logs
+(cd modules/01-kms && terraform output key_arn)                 # CMK
+(cd modules/03-network && terraform output vpc_id)               # VPC ID
 ```
 
 ---
@@ -152,34 +170,32 @@ terraform output vpc_id                 # VPC ID
 
 ```
 arc-eks-observability-blueprint/
-├── main.tf                   # 7 ARC module blocks, in dependency order
-├── variables.tf              # all inputs with types & descriptions
-├── locals.tf                 # naming, tags, compliance overlays
-├── data.tf                   # caller identity, KMS policy, subnet lookups, EKS auth
-├── outputs.tf                # cluster ID, endpoint, kubeconfig command, S3, KMS
-├── version.tf                # Terraform + AWS + kubernetes + helm provider pins
-├── .terraform-version        # tfenv pin (1.9.8)
-├── terraform.tfvars.example  # copy to terraform.tfvars
-├── modules/                  # one numbered wrapper per ARC module
+├── bootstrap/                 # creates the S3 + DynamoDB state backend (apply first)
+│   ├── main.tf · variables.tf · outputs.tf
+├── modules/                   # each folder is an independent Terraform root
 │   ├── 01-kms/
+│   │   ├── config.hcl         # static backend key
+│   │   ├── main.tf            # own backend "s3" {}, own provider, own module block
+│   │   ├── variables.tf
+│   │   ├── outputs.tf
+│   │   └── tfvars/{general,hipaa,pci}.tfvars
 │   ├── 02-s3/
 │   ├── 03-network/
 │   ├── 04-security-group/
 │   ├── 05-eks/
 │   ├── 06-eks-addon/
 │   └── 07-observability/
-├── sample-app/                # app emitting logs/metrics to prove the stack works
-├── examples/
-│   ├── README.md
-│   ├── general.tfvars
-│   ├── hipaa.tfvars
-│   └── pci_dss.tfvars
+├── scripts/
+│   └── apply-module.sh        # apply one module with a chosen compliance profile
+├── Makefile                   # bootstrap / init / plan / apply / validate / fmt
+├── .terraform-version         # tfenv pin (1.9.8)
+├── sample-app/                # Dockerized app emitting logs/metrics to prove the stack works
 ├── docs/
-│   ├── INSTALL.md            # macOS · Linux · Windows setup guide
-│   └── DEPLOYMENT.md        # full deployment + dashboard access + rollback
-├── GETTING-STARTED.md        # beginner walkthrough
+│   ├── INSTALL.md             # macOS · Linux · Windows setup guide
+│   └── DEPLOYMENT.md          # full deployment + dashboard access + rollback
+├── GETTING-STARTED.md         # beginner walkthrough
 ├── CONTRIBUTING.md
-├── CHANGELOG.md · LICENSE · NOTICE · Makefile · VERSION
+├── CHANGELOG.md · LICENSE · NOTICE · VERSION
 └── README.md
 ```
 
@@ -190,14 +206,14 @@ arc-eks-observability-blueprint/
 - **[GETTING-STARTED.md](GETTING-STARTED.md)** — zero-to-live walkthrough for first-timers
 - **[docs/INSTALL.md](docs/INSTALL.md)** — install Terraform, AWS CLI, and kubectl on macOS / Linux / Windows
 - **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** — full deployment guide, dashboard access, log queries, rollback
-- **[examples/README.md](examples/README.md)** — compliance-profile example files
+- **`modules/*/tfvars/{general,hipaa,pci}.tfvars`** — per-module compliance-profile example files
 
 ---
 
 ## Important notes
 
-- **Two providers need EKS to exist before configuring** — the `kubernetes` and `helm` providers in `version.tf` reference `module.eks` outputs. If running `terraform plan` before `apply`, the providers will show a configuration error; this resolves after the first apply populates the cluster endpoint.
-- **EKS addons must complete before observability-stack** — `module.observability_stack` has `depends_on = [module.eks_addons]` to ensure VPC CNI and EBS CSI are ready before Helm charts deploy.
+- **Independent state, ordered apply** — each `modules/NN-name/` is its own Terraform root with its own S3 backend. There is no `depends_on` chain across modules; apply ordering (01 → 07) is enforced by the Makefile's numeric directory iteration, not by Terraform itself. Applying out of order will fail `terraform_remote_state` lookups for modules with dependencies (02, 04, 05, 06).
+- **EKS addons before observability** — apply `06-eks-addon` before `07-observability` so VPC CNI and EBS CSI are ready before Helm charts deploy. `make apply` and `make init`/`make plan` already do this in the correct order.
 - **Grafana default credentials** — change the admin password immediately after first login.
 - **S3 log bucket** — Fluent Bit ships to S3 in addition to OpenSearch. This is the cold-storage tier for logs older than the OpenSearch retention window.
 
