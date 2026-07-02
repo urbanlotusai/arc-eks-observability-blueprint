@@ -37,12 +37,12 @@ No hand-wiring of Helm releases, IAM roles for service accounts, or log routing.
 
 | Advantage | What it means for you |
 |---|---|
-| ⚡ **Minutes, not days** | EKS + full EFK + Prometheus + Grafana normally requires days of Helm wiring. This deploys in one command. |
-| 🔒 **Secure by default** | KMS CMK encrypts EKS secrets and the S3 log archive. Fluent Bit ships logs over mTLS. |
-| 📊 **Observable on day one** | Grafana dashboards and Prometheus alerts are live immediately after apply — not "left as an exercise." |
-| 🗄️ **Long-term retention** | Fluent Bit fans out to both OpenSearch (hot) and KMS-encrypted S3 (cold). Logs survive cluster deletion. |
-| 🧩 **Proven building blocks** | Every resource comes from a published, versioned SourceFuse ARC module. Upgrades are a version bump. |
-| 📦 **Portable & auditable** | Pure Terraform. Version-controlled, reproducible across environments and accounts. |
+| **Minutes, not days** | EKS + full EFK + Prometheus + Grafana normally requires days of Helm wiring. This deploys in one command. |
+| **Secure by default** | KMS CMK encrypts EKS secrets and the S3 log archive. Fluent Bit ships logs over mTLS. |
+| **Observable on day one** | Grafana dashboards and Prometheus alerts are live immediately after apply — not "left as an exercise." |
+| **Long-term retention** | Fluent Bit fans out to both OpenSearch (hot) and KMS-encrypted S3 (cold). Logs survive cluster deletion. |
+| **Proven building blocks** | Every resource comes from a published, versioned SourceFuse ARC module. Upgrades are a version bump. |
+| **Portable & auditable** | Pure Terraform. Version-controlled, reproducible across environments and accounts. |
 
 ---
 
