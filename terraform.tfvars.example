@@ -1,0 +1,15 @@
+# ── Mandatory ─────────────────────────────────────────────────────────────────
+environment = "prod"
+namespace   = "myorg"
+
+# ── Optional overrides (defaults shown) ───────────────────────────────────────
+# region              = "us-east-1"
+# vpc_cidr            = "10.0.0.0/16"
+# kubernetes_version  = "1.29"
+# node_instance_types = ["m5.xlarge"]
+# node_desired_size   = 3
+# node_min_size       = 2
+# node_max_size       = 6
+# search_engine       = "opensearch"
+# log_aggregator      = "fluent-bit"
+# log_retention_days  = 90

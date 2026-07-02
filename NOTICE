@@ -1,0 +1,13 @@
+ARC EKS with Full Observability Blueprint
+Copyright 2026 SourceFuse
+
+Licensed under the Apache License, Version 2.0.
+
+This product composes:
+  - sourcefuse/arc-kms/aws
+  - sourcefuse/arc-s3/aws
+  - sourcefuse/arc-network/aws
+  - sourcefuse/arc-security-group/aws
+  - sourcefuse/arc-eks/aws
+  - sourcefuse/arc-eks-addon/aws
+  - sourcefuse/arc-observability-stack/aws
