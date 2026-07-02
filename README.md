@@ -158,7 +158,17 @@ arc-eks-observability-blueprint/
 ├── data.tf                   # caller identity, KMS policy, subnet lookups, EKS auth
 ├── outputs.tf                # cluster ID, endpoint, kubeconfig command, S3, KMS
 ├── version.tf                # Terraform + AWS + kubernetes + helm provider pins
+├── .terraform-version        # tfenv pin (1.9.8)
 ├── terraform.tfvars.example  # copy to terraform.tfvars
+├── modules/                  # one numbered wrapper per ARC module
+│   ├── 01-kms/
+│   ├── 02-s3/
+│   ├── 03-network/
+│   ├── 04-security-group/
+│   ├── 05-eks/
+│   ├── 06-eks-addon/
+│   └── 07-observability/
+├── sample-app/                # app emitting logs/metrics to prove the stack works
 ├── examples/
 │   ├── README.md
 │   ├── general.tfvars

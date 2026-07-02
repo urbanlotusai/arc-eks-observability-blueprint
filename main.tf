@@ -3,14 +3,12 @@
 #    Outputs consumed by: module.eks (secrets encryption), module.s3
 # ═══════════════════════════════════════════════════════════════════════════════
 module "kms" {
-  source  = "sourcefuse/arc-kms/aws"
-  version = "1.0.11"
+  source = "./modules/01-kms"
 
   alias                   = local.kms_alias
   policy                  = data.aws_iam_policy_document.kms.json
   description             = "CMK for ${local.name_prefix} EKS cluster and observability stack"
   deletion_window_in_days = var.kms_deletion_window
-  enable_key_rotation     = true
 
   tags = local.tags
 }
@@ -20,8 +18,7 @@ module "kms" {
 #    Outputs consumed by: (Fluent Bit / Fluentd writes directly via IAM role)
 # ═══════════════════════════════════════════════════════════════════════════════
 module "s3" {
-  source  = "sourcefuse/arc-s3/aws"
-  version = "0.0.7"
+  source = "./modules/02-s3"
 
   name = local.log_bucket
 
@@ -46,8 +43,7 @@ module "s3" {
 #    Outputs consumed by: module.eks, module.observability_stack
 # ═══════════════════════════════════════════════════════════════════════════════
 module "network" {
-  source  = "sourcefuse/arc-network/aws"
-  version = "3.0.14"
+  source = "./modules/03-network"
 
   name        = local.name_prefix
   namespace   = var.namespace
@@ -62,14 +58,13 @@ module "network" {
 #    Outputs consumed by: module.eks (vpc_config)
 # ═══════════════════════════════════════════════════════════════════════════════
 module "security_group" {
-  source  = "sourcefuse/arc-security-group/aws"
-  version = "0.0.5"
+  source = "./modules/04-security-group"
 
   name        = "${local.name_prefix}-eks-cluster"
   description = "Additional security group for the EKS cluster control plane"
   vpc_id      = module.network.vpc_id
 
-  ingress_rules = []  # EKS manages control-plane SG rules; extend here if needed
+  ingress_rules = [] # EKS manages control-plane SG rules; extend here if needed
 
   egress_rules = [
     {
@@ -89,8 +84,7 @@ module "security_group" {
 #    Outputs consumed by: module.eks_addons, module.observability_stack
 # ═══════════════════════════════════════════════════════════════════════════════
 module "eks" {
-  source  = "sourcefuse/arc-eks/aws"
-  version = "6.0.4"
+  source = "./modules/05-eks"
 
   name        = local.cluster_name
   namespace   = var.namespace
@@ -99,8 +93,8 @@ module "eks" {
   kubernetes_version = var.kubernetes_version
 
   vpc_config = {
-    vpc_id     = module.network.vpc_id
-    subnet_ids = data.aws_subnets.private.ids
+    vpc_id             = module.network.vpc_id
+    subnet_ids         = data.aws_subnets.private.ids
     security_group_ids = [module.security_group.id]
   }
 
@@ -131,8 +125,7 @@ module "eks" {
 #    Outputs consumed by: (none — addons are cluster-level)
 # ═══════════════════════════════════════════════════════════════════════════════
 module "eks_addons" {
-  source  = "sourcefuse/arc-eks-addon/aws"
-  version = "1.0.3"
+  source = "./modules/06-eks-addon"
 
   cluster_name = module.eks.cluster_id
 
@@ -152,18 +145,17 @@ module "eks_addons" {
 #    S3 bucket wired as long-term log archive destination
 # ═══════════════════════════════════════════════════════════════════════════════
 module "observability_stack" {
-  source  = "sourcefuse/arc-observability-stack/aws"
-  version = "1.0.2"
+  source = "./modules/07-observability"
 
   namespace   = var.namespace
   environment = var.environment
 
   # Log aggregation backend
-  search_engine    = var.search_engine    # "opensearch"
-  log_aggregator   = var.log_aggregator   # "fluent-bit"
+  search_engine  = var.search_engine  # "opensearch"
+  log_aggregator = var.log_aggregator # "fluent-bit"
 
   # Metrics stack
-  metrics_monitoring_system = var.metrics_monitoring_system  # "prometheus"
+  metrics_monitoring_system = var.metrics_monitoring_system # "prometheus"
 
   # OpenSearch / Elasticsearch config (in-cluster)
   elasticsearch_config = {
