@@ -131,6 +131,7 @@ kubectl port-forward svc/grafana 3000:3000 -n observability
 |---|---|
 | `general` | KMS rotation on, 90-day S3 log retention |
 | `hipaa` | 365-day S3 log retention, EKS secrets encrypted with CMK (enforced) |
+| `pci_dss` | 365-day S3 log retention, EKS secrets encrypted with CMK (enforced) |
 
 ---
 
@@ -161,7 +162,8 @@ arc-eks-observability-blueprint/
 ├── examples/
 │   ├── README.md
 │   ├── general.tfvars
-│   └── hipaa.tfvars
+│   ├── hipaa.tfvars
+│   └── pci_dss.tfvars
 ├── docs/
 │   ├── INSTALL.md            # macOS · Linux · Windows setup guide
 │   └── DEPLOYMENT.md        # full deployment + dashboard access + rollback
